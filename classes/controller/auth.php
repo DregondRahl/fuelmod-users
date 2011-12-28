@@ -83,20 +83,20 @@ class Controller_Auth extends \Controller_App
 					\Package::load('email');
 
 					$activation_link = Sentry::user()->register(array(
-							'username'	=> $form->validated('username'),
-							'password'	=> $form->validated('password'),
-							'email'		=> $form->validated('email'),
+						'username'	=> $form->validated('username'),
+						'password'	=> $form->validated('password'),
+						'email'		=> $form->validated('email'),
 					));
 
 					$view = \View::forge('email/activation')
-							->set('user', $form->validated('username'))
-							->set('activation_link', $activation_link, false);
+						->set('user', $form->validated('username'))
+						->set('activation_link', $activation_link, false);
 
 					$email = \Email::forge()
-							->from('raziel8@gmail.com', 'Dregond Rahl')
-							->to($form->validated('email'), $form->validated('username'))
-							->subject('Activation Email')
-							->html_body($view);
+						->from('raziel8@gmail.com', 'Dregond Rahl')
+						->to($form->validated('email'), $form->validated('username'))
+						->subject('Activation Email')
+						->html_body($view);
 
 					try
 					{
@@ -118,9 +118,9 @@ class Controller_Auth extends \Controller_App
 				else
 				{
 					$user_id = Sentry::user()->create(array(
-							'username'	=> $form->validated('username'),
-							'password'	=> $form->validated('password'),
-							'email'		=> $form->validated('email'),
+						'username'	=> $form->validated('username'),
+						'password'	=> $form->validated('password'),
+						'email'		=> $form->validated('email'),
 					));
 
 					try
@@ -217,16 +217,16 @@ class Controller_Auth extends \Controller_App
 				if ($reset)
 				{
 					\Package::load('email');
-					
+
 					$view = \View::forge('email/forgot_password')
-							->set('user', $reset['username'])
-							->set('reset_link', $reset['password_reset_link'], false);
+						->set('user', $reset['username'])
+						->set('reset_link', $reset['password_reset_link'], false);
 
 					$email = \Email::forge()
-							->from('raziel8@gmail.com', 'Dregond Rahl')
-							->to($reset['email'], $reset['username'])
-							->subject('Reset Password Email')
-							->html_body($view);
+						->from('raziel8@gmail.com', 'Dregond Rahl')
+						->to($reset['email'], $reset['username'])
+						->subject('Reset Password Email')
+						->html_body($view);
 
 					try
 					{
@@ -298,7 +298,7 @@ class Controller_Auth extends \Controller_App
 	 */
 	public function action_change_password()
 	{
-		! Sentry::check() and Response::redirect('/');
+		!Sentry::check() and Response::redirect('/');
 
 		$user = Model_User::forge();
 
