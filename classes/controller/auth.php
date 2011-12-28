@@ -82,7 +82,7 @@ class Controller_Auth extends \Controller_App
 				{
 					\Package::load('email');
 
-					$hash_link = Sentry::user()->register(array(
+					$activation_link = Sentry::user()->register(array(
 							'username'	=> $form->validated('username'),
 							'password'	=> $form->validated('password'),
 							'email'		=> $form->validated('email'),
@@ -90,7 +90,7 @@ class Controller_Auth extends \Controller_App
 
 					$view = \View::forge('email/activation')
 							->set('user', $form->validated('username'))
-							->set('hash_link', $hash_link, false);
+							->set('activation_link', $activation_link, false);
 
 					$email = \Email::forge()
 							->from('raziel8@gmail.com', 'Dregond Rahl')
@@ -161,43 +161,35 @@ class Controller_Auth extends \Controller_App
 	{
 		Sentry::check() and Response::redirect('/');
 
-		if ($hash_login and $hash_code)
+		try
 		{
-			try
-			{
-				$activate = Sentry::activate_user($hash_login, $hash_code);
+			$activate = Sentry::activate_user($hash_login, $hash_code);
 
-				if ($activate)
+			if ($activate)
+			{
+				try
 				{
-					try
+					if ($activate->add_to_group('users'))
 					{
-						if ($activate->add_to_group('users'))
-						{
-							Session::set_flash('success', 'Activation was successful, you may now login');
-							Response::redirect('users/auth/login');
-						}
-					}
-					catch (\SentryGroupException $e)
-					{
-						Session::set_flash('error', $e->getMessage());
-						Response::redirect('/');
+						Session::set_flash('success', 'Activation was successful, you may now login');
+						Response::redirect('users/auth/login');
 					}
 				}
-				else
+				catch (\SentryGroupException $e)
 				{
-					Session::set_flash('error', 'Activation failed');
+					Session::set_flash('error', $e->getMessage());
 					Response::redirect('/');
 				}
 			}
-			catch (\SentryAuthException $e)
+			else
 			{
-				Session::set_flash('error', $e->getMessage());
+				Session::set_flash('error', 'Activation failed');
 				Response::redirect('/');
 			}
 		}
-		else
+		catch (\SentryAuthException $e)
 		{
-			Session::set_flash('error', 'Missing activation code or email.');
+			Session::set_flash('error', $e->getMessage());
 			Response::redirect('/');
 		}
 	}
@@ -224,13 +216,15 @@ class Controller_Auth extends \Controller_App
 
 				if ($reset)
 				{
-					$view = \View::forge('email/forgot')
-							->set('email', $reset->get('email'))
-							->set('hash_link', $reset->get('password_reset_link'), false);
+					\Package::load('email');
+					
+					$view = \View::forge('email/forgot_password')
+							->set('user', $reset['username'])
+							->set('reset_link', $reset['password_reset_link'], false);
 
 					$email = \Email::forge()
 							->from('raziel8@gmail.com', 'Dregond Rahl')
-							->to($reset->get('email'), $reset->get('username'))
+							->to($reset['email'], $reset['username'])
 							->subject('Reset Password Email')
 							->html_body($view);
 
@@ -276,26 +270,23 @@ class Controller_Auth extends \Controller_App
 	{
 		Sentry::check() and Response::redirect('/');
 
-		if ($hash_login and $hash_code)
+		try
 		{
-			try
+			if (Sentry::reset_password_confirm($hash_login, $hash_code))
 			{
-				if (Sentry::reset_password_confirm($hash_login, $hash_code))
-				{
-					Session::set_flash('success', 'Password reset was successful you may now login with your new password');
-					Response::redirect('users/auth/login');
-				}
-				else
-				{
-					Session::set_flash('error', 'Password reset failed');
-					Response::redirect('/');
-				}
+				Session::set_flash('success', 'Password reset was successful you may now login with your new password.');
+				Response::redirect('users/auth/login');
 			}
-			catch (\SentryAuthException $e)
+			else
 			{
-				Session::set_flash('error', $e->getMessage());
+				Session::set_flash('error', 'Password reset failed.');
 				Response::redirect('/');
 			}
+		}
+		catch (\SentryAuthException $e)
+		{
+			Session::set_flash('error', $e->getMessage());
+			Response::redirect('/');
 		}
 	}
 

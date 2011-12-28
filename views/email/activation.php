@@ -1,3 +1,3 @@
 Welcome <?php echo $user; ?>
 <br/>
-Activation Key : <?php echo $hash_code ?>
+Activation Link : <?php echo Html::anchor('users/auth/activate/'. $activation_link, 'Activate'); ?>
