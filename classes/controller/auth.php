@@ -21,7 +21,9 @@ class Controller_Auth extends \Controller_App
 
 		$user = Model_User::forge();
 
-		$form = \Fieldset::forge('user')->add_model('Users\\Model_User', null, 'set_form_login')->populate($user, true);
+		$form = \Fieldset::forge('user')
+			->add_model('Users\\Model_User', null, 'set_form_login')
+			->populate($user, true);
 
 		if ($form->validation()->run())
 		{
@@ -44,7 +46,7 @@ class Controller_Auth extends \Controller_App
 		}
 
 		$this->template->title = 'User - Login';
-		$this->template->content = \View::forge('auth/login')->set('form', $form, false);
+		$this->template->content = \View::forge('auth/forms')->set('form', $form, false);
 	}
 
 	/**
@@ -72,7 +74,9 @@ class Controller_Auth extends \Controller_App
 
 		$user = Model_User::forge();
 
-		$form = \Fieldset::forge('user')->add_model('Users\\Model_User', null, 'set_form_register')->populate($user, true);
+		$form = \Fieldset::forge('user')
+			->add_model('Users\\Model_User', null, 'set_form_register')
+			->populate($user, true);
 
 		if ($form->validation()->run())
 		{
@@ -89,7 +93,7 @@ class Controller_Auth extends \Controller_App
 					));
 
 					$view = \View::forge('email/activation')
-						->set('user', $form->validated('username'))
+						->set('username', $form->validated('username'))
 						->set('activation_link', $activation_link, false);
 
 					$email = \Email::forge()
@@ -148,7 +152,7 @@ class Controller_Auth extends \Controller_App
 		}
 
 		$this->template->title = 'User - Register';
-		$this->template->content = \View::forge('auth/register')->set('form', $form, false);
+		$this->template->content = \View::forge('auth/forms')->set('form', $form, false);
 	}
 
 	/**
@@ -206,7 +210,9 @@ class Controller_Auth extends \Controller_App
 
 		$user = Model_User::forge();
 
-		$form = \Fieldset::forge('user')->add_model('Users\\Model_User', null, 'set_form_forgot_password')->populate($user, true);
+		$form = \Fieldset::forge('user')
+			->add_model('Users\\Model_User', null, 'set_form_forgot_password')
+			->populate($user, true);
 
 		if ($form->validation()->run())
 		{
@@ -219,7 +225,7 @@ class Controller_Auth extends \Controller_App
 					\Package::load('email');
 
 					$view = \View::forge('email/forgot_password')
-						->set('user', $reset['username'])
+						->set('username', $reset['username'])
 						->set('reset_link', $reset['password_reset_link'], false);
 
 					$email = \Email::forge()
@@ -257,7 +263,7 @@ class Controller_Auth extends \Controller_App
 		}
 
 		$this->template->title = 'User - Forgot Password';
-		$this->template->content = \View::forge('auth/login')->set('form', $form, false);
+		$this->template->content = \View::forge('auth/forms')->set('form', $form, false);
 	}
 
 	/**
@@ -298,11 +304,13 @@ class Controller_Auth extends \Controller_App
 	 */
 	public function action_change_password()
 	{
-		!Sentry::check() and Response::redirect('/');
+		Sentry::check() or Response::redirect('/');
 
 		$user = Model_User::forge();
 
-		$form = \Fieldset::forge('user')->add_model('Users\\Model_User', null, 'set_form_change_password')->populate($user, true);
+		$form = \Fieldset::forge('user')
+			->add_model('Users\\Model_User', null, 'set_form_change_password')
+			->populate($user, true);
 
 		if ($form->validation()->run())
 		{
@@ -325,7 +333,7 @@ class Controller_Auth extends \Controller_App
 		}
 
 		$this->template->title = 'User - Change Password';
-		$this->template->content = \View::forge('auth/change_password')->set('form', $form, false);
+		$this->template->content = \View::forge('auth/forms')->set('form', $form, false);
 	}
 
 }

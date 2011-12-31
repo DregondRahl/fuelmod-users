@@ -18,7 +18,8 @@ class Controller_Users extends \Controller_App
 	public function action_index()
 	{
 		$users = Model_User::find(function($query) {
-				return $query->join('users_profiles')->on('users.id', '=', 'users_profiles.user_id');
+			return $query->join('users_profiles', 'LEFT')
+					->on('users.id', '=', 'users_profiles.user_id');
 		});
 
 		if ( ! $users)
@@ -40,13 +41,18 @@ class Controller_Users extends \Controller_App
 	{
 		$id or Response::redirect('users');
 
+		/* Consider making model method insted*/
 		$user = Model_User::find_one(function($query) use ($id) {
-				return $query->join('users_profiles', 'LEFT')
-						->on('users.id', '=', 'users_profiles.user_id')
-						->where('users.id', $id)
-						->limit(1);
+			return $query->select('users.*','users_profiles.*', 'users_follows.follow_id')
+					->join('users_profiles', 'LEFT')
+					->on('users.id', '=', 'users_profiles.user_id')
+					->join('users_follows', 'LEFT')
+					->on('users.id', '=', 'users_follows.follow_id')
+					->on('users_follows.user_id', '=', \DB::expr(Sentry::user()->get('id')))
+					->where('users.id', $id)
+					->limit(1);
 		});
-		
+
 		if ( ! $user)
 		{
 			throw new \HttpNotFoundException();
@@ -64,21 +70,53 @@ class Controller_Users extends \Controller_App
 	 */
 	public function action_edit()
 	{
-		if ( ! $user = Model_Profile::find_one_by_user_id(Sentry::user()->get('id')))
+		Sentry::check() or Response::redirect('/');
+
+		if ( ! $profile = Model_Profile::find_one_by_user_id(Sentry::user()->get('id')))
 		{
 			throw new \HttpNotFoundException();
 		}
+		
+		if ($profile->birthdate > 0)
+		{
+			$profile->dob_day	= date('j', $profile->birthdate);
+			$profile->dob_month	= date('n', $profile->birthdate);
+			$profile->dob_year	= date('Y', $profile->birthdate);
+		}
 
-		$form = \Fieldset::forge('profile')->add_model('Users\\Model_Profile')->populate($user, true);
+		$form = \Fieldset::forge('profile')
+			->add_model('Users\\Model_Profile', null, 'set_form_profile')
+			->populate($profile, true);
 
 		if ($form->validation()->run())
 		{
-			$user->gender		= $form->validated('gender');
-			$user->location		= $form->validated('location');
-			$user->signature	= $form->validated('signature');
-			$user->about		= $form->validated('about');
+			/* contact */
+			$profile->contact_email		= $form->validated('contact_email');
+			$profile->contact_gtalk		= $form->validated('contact_gtalk');
+			$profile->contact_skype		= $form->validated('contact_skype');
+			$profile->contact_msn		= $form->validated('contact_msn');
+			$profile->contact_yim		= $form->validated('contact_yim');
 
-			if ($user->save())
+			/* social */
+			$profile->social_facebook	= $form->validated('social_facebook');
+			$profile->social_twitter	= $form->validated('social_twitter');
+			$profile->social_gplus		= $form->validated('social_gplus');
+			
+			/* profile */
+			$profile->gender	= $form->validated('gender');
+			$profile->location	= $form->validated('location');
+			$profile->about		= $form->validated('about');
+			$profile->birthdate	= mktime(0, 0, 0, 
+				$form->validated('dob_month'),
+				$form->validated('dob_day'),
+				$form->validated('dob_year')
+			);
+
+			unset($profile->dob_day);
+			unset($profile->dob_month);
+			unset($profile->dob_year);
+			
+			if ($profile->save())
 			{
 				Session::set_flash('success', 'Updated Profile.');
 				Response::redirect('users/view/'. Sentry::user()->get('id'));
@@ -101,115 +139,125 @@ class Controller_Users extends \Controller_App
 	 */
 	public function action_options()
 	{
-		if ( ! $user = Model_Options::find_one_by_user_id(Sentry::user()->get('id')))
+		Sentry::check() or Response::redirect('/');
+
+		if ( ! $profile = Model_Profile::find_one_by_user_id(Sentry::user()->get('id')))
 		{
 			throw new \HttpNotFoundException();
 		}
 
-		$form = \Fieldset::forge('options')->add_model('Users\\Model_Options')->populate($user, true);
+		$form = \Fieldset::forge('profile')
+			->add_model('Users\\Model_Profile', null, 'set_form_options')
+			->populate($profile, true);
 
 		if ($form->validation()->run())
 		{
-			$user->birthdate		= $form->validated('birthdate');
-			$user->signature		= $form->validated('signature');
-			$user->alerts			= $form->validated('alerts');
-			$user->wallpost			= $form->validated('wallpost');
-			$user->notifications	= $form->validated('notifications');
+			/* options */
+			$profile->show_birthdate		= $form->validated('show_birthdate');
+			$profile->show_alerts			= $form->validated('show_alerts');
+			$profile->show_signatures		= $form->validated('show_signatures');
+			$profile->show_notifications	= $form->validated('show_notifications');
+			$profile->allow_wallposts		= $form->validated('allow_wallposts');
 
-			if ($user->save())
+			if ($profile->save())
 			{
-				Session::set_flash('success', 'Updated Options');
+				Session::set_flash('success', 'Updated user options.');
 				Response::redirect('users/view/'. Sentry::user()->get('id'));
 			}
 			else
 			{
-				Session::set_flash('error', 'Could not update Options');
+				Session::set_flash('error', 'Nothing to update.');
 			}
 		}
 
 		$this->template->title = 'User - Options';
-		$this->template->content = \View::forge('users/edit')->set('form', $form, false);
+		$this->template->content = \View::forge('users/options')->set('form', $form, false);
 	}
-
+	
 	/**
 	 * The avatar action.
 	 * 
 	 * @access  public
 	 * @return  void
 	 */
-	public function action_avatar($delete = false)
+	public function action_avatar($delete = null)
 	{
-		if ( ! $user = Model_User::find_by_pk(Sentry::user()->get('id')))
-		{
-			throw new \HttpNotFoundException();
-		}
+		Sentry::check() or Response::redirect('/');
 
 		$form = \Fieldset::forge('avatar');
 		$form->set_config('form_attributes', array('enctype' => 'multipart/form-data'));
 		$form->add('files', 'Files', array('type' => 'file'));
 		$form->add('submit', '', array('type' => 'submit', 'value' => 'Upload'));
 
-		$avatar_path = 'assets' . DS . 'img' . DS . 'avatar';
-		$upload_path = rtrim(DOCROOT, '/') . DS . $avatar_path;
+		$upload_path = rtrim(DOCROOT, '/') . DS .'assets'. DS .'img'. DS .'avatar';
+		$avatar_path = $upload_path . DS . Sentry::user()->get('id');
 
-		if ($delete AND $user->avatar == 1)
+		if ($delete)
 		{
-			if (\File::delete(DOCROOT . $avatar_path . DS . Sentry::user()->get('id') . '.jpg') AND \File::delete(DOCROOT . $avatar_path . DS . Sentry::user()->get('id') . '-tn.jpg'))
+			try
 			{
-				$user->avatar = 0;
-
-				if ($user->save())
-				{
-					Session::set_flash('success', 'Avatar Removed');
-				}
+				\File::delete($avatar_path .'.jpg');
+				\File::delete($avatar_path .'-tn.jpg');
+				
+				Session::set_flash('success', 'Avatar removed.');
 			}
-			else
+			catch (\InvalidPathException $e)
 			{
-				Session::set_flash('error', 'Could not remove Avatar');
+				Session::set_flash('error', 'No avatar found to delete.');
+			}
+			
+			Response::redirect('users/avatar');
+		}
+		
+		\Upload::process(array(
+			'path'				=> $upload_path,
+			'create_path'		=> true,
+			'new_name'			=> time(),
+			'max_size'			=> \Num::bytes('2MB'),
+			'ext_whitelist'		=> array('jpg', 'png'),
+			'overwrite'			=> true,
+		));
+
+		if (\Upload::is_valid())
+		{
+			\Upload::save();
+
+			$arr = \Upload::get_files();
+
+			if (isset($arr[0]))
+			{
+				try
+				{
+					\File::delete($avatar_path .'.jpg');
+					\File::delete($avatar_path .'-tn.jpg');
+				}
+				catch(\InvalidPathException $e){}
+					
+				try
+				{
+					\Image::load($upload_path . DS . $arr[0]['saved_as'])
+						->crop_resize(125, 125)
+						->save($avatar_path .'.jpg');
+
+					\Image::load($upload_path . DS . $arr[0]['saved_as'])
+						->crop_resize(50, 50)
+						->save($avatar_path .'-tn.jpg');
+
+					if (\File::delete($upload_path . DS . $arr[0]['saved_as']))
+					{
+						Session::set_flash('success', 'Avatar updated.');
+					}
+				}
+				catch (\InvalidPathException $e)
+				{
+					Session::set_flash('error', 'Could not update avatar.');
+				}
 			}
 		}
-		else
+
+		foreach (\Upload::get_errors() as $file)
 		{
-			\Upload::process(array(
-					'path'			=> $upload_path,
-					'create_path'	=> true,
-					'new_name'		=> Sentry::user()->get('id'),
-					'max_size'		=> \Num::bytes('2MB'),
-					'ext_whitelist' => array('jpg', 'png', 'gif'),
-					'overwrite'		=> true,
-			));
-
-			if (\Upload::is_valid())
-			{
-				\Upload::save();
-
-				$arr = \Upload::get_files();
-
-				if (isset($arr[0]))
-				{
-					if ($user->avatar == 1)
-					{
-						\File::delete($upload_path . DS . Sentry::user()->get('id') . '.jpg');
-						\File::delete($upload_path . DS . Sentry::user()->get('id') . '-tn.jpg');
-					}
-
-					\Image::load($upload_path . DS . $arr[0]['saved_as'])->crop_resize(125, 125)->save_pa('', '', 'jpg');
-					\Image::load($upload_path . DS . $arr[0]['saved_as'])->crop_resize(50, 50)->save_pa('', '-tn', 'jpg');
-
-					if ($user->avatar == 0)
-					{
-						$user->avatar = 1;
-						$user->save();
-					}
-
-					Session::set_flash('success', 'Avatar Added to Profile');
-				}
-			}
-
-			foreach (\Upload::get_errors() as $file)
-			{
-				Session::set_flash('error', $file['errors'][0]['message']);
-			}
+			Session::set_flash('error', $file['errors'][0]['message']);
 		}
 
 		$this->template->title = 'User - Avatar';
@@ -222,33 +270,48 @@ class Controller_Users extends \Controller_App
 	 * @access  public
 	 * @return  void
 	 */
-	public function action_follow($id = false)
+	public function action_follow($id = null)
 	{
-		$id or Response::redirect('users');
+		Sentry::check() or $id or Response::redirect('/');
 
-		//Use DB methods and consider batch mode like xenforo
-		$follow_check	= Model_Follow::find()->where('user_id', Sentry::user()->get('id'))->where('follow_id', $id);
-		$follow_user	= Model_Profile::find_by_user_id($id);
-
-		if (!$follow_user or $follow_check->count() > 0)
+		if (Sentry::user()->get('id') == $id)
+		{
+			Session::set_flash('error', 'You cannot follow yourself.');
+			Response::redirect('users/view/'. $id);
+		}
+		
+		if ( ! $user = Model_User::find_by_pk($id))
 		{
 			throw new \HttpNotFoundException();
 		}
+		
+		$follow = Model_Follow::find_one_by(array(
+			'user_id'	=> Sentry::user()->get('id'),
+			'follow_id' => $user->id,
+		));
 
-		$user = Model_Profile::find_by_user_id($this->user->id);
-		$follow = Model_Follow::forge();
-
-		$follow->user_id = $this->user->id;
-		$follow->follow_id = $id;
-
-		if ($follow->save())
+		if ( ! $follow)
 		{
-			$follow_user->followers = $follow_user->followers + 1;
-			$follow_user->save();
+			$follow_me = new Model_Follow(array(
+				'user_id'	=> Sentry::user()->get('id'),
+				'follow_id' => $user->id,
+			));
 
-			$user->follows = $user->follows + 1;
-			$user->save();
+			if ($follow_me->save())
+			{
+				Session::set_flash('success', 'You are now following '. $user->username);
+			}
+			else
+			{
+				Session::set_flash('error', 'Unable to follow '. $user->username);
+			}
 		}
+		else
+		{
+			Session::set_flash('error', 'You are already following '. $user->username);
+		}
+
+		Response::redirect('users/view/'. $user->id);
 	}
 
 	/**
@@ -257,74 +320,89 @@ class Controller_Users extends \Controller_App
 	 * @access  public
 	 * @return  void
 	 */
-	public function action_unfollow($id = false)
+	public function action_unfollow($id = null)
 	{
-		$id or Response::redirect('users');
+		Sentry::check() or $id or Response::redirect('/');
 
-		//Use DB methods
-		$follow_check	= Model_Follow::find()->where('user_id', Sentry::user()->get('id'))->where('follow_id', $id);
-		$follow_user	= Model_Profile::find_by_user_id($id);
-
-		if (!$follow_user or $follow_check->count() == 0)
+		if (Sentry::user()->get('id') == $id)
+		{
+			Session::set_flash('error', 'You are stuck with yourself.');
+			Response::redirect('users/view/'. $id);
+		}
+		
+		if ( ! $user = Model_User::find_by_pk($id))
 		{
 			throw new \HttpNotFoundException();
 		}
 
-		$user = Model_Profile::find_by_user_id($this->user->id);
-		$follow = $follow_check->get_one();
-
-		if ($follow->delete())
+		//consider join insted?
+		$follow = Model_Follow::find_one_by(array(
+				'user_id'	=> Sentry::user()->get('id'),
+				'follow_id' => $user->id,
+		));
+		
+		if ($follow)
 		{
-			$follow_user->followers = $follow_user->followers - 1;
-			$follow_user->save();
-
-			$user->follows = $user->follows - 1;
-			$user->save();
+			if ($follow->delete())
+			{
+				Session::set_flash('success', 'You are no longer following '. $user->username);
+			}
+			else
+			{
+				Session::set_flash('error', 'Unable to unfollow '. $user->username);
+			}
 		}
-	}
-
-	/**
-	 * The following action.
-	 * 
-	 * @access  public
-	 * @return  void
-	 */
-	public function action_followers($id = false)
-	{
-		$id or Response::redirect('users');
-
-		if (!$followers = Model_Follow::find()->where('follow_id', $id)->related('followers')->get())
+		else
 		{
-			throw new \HttpNotFoundException(); //consider change to page.
+			Session::set_flash('error', 'You are not following '. $user->username);
 		}
 
-		$user = Model_User::find()->select('id', 'username')->where('id', $id)->get_one();
-
-		$this->template->title = $user->username . ' - Followers';
-		$this->template->content = \View::forge('users/followers')->set('followers', $followers)->set('title', $user->username . ' - Followers');
+		Response::redirect('users/view/'. $user->id);
 	}
-
+	
 	/**
 	 * The followers action.
 	 * 
 	 * @access  public
 	 * @return  void
 	 */
-	public function action_follows($id = false)
+	public function action_followers()
 	{
-		$id or Response::redirect('users');
+		$followers = Model_Follow::find(function($query) {
+			return $query->join('users', 'INNER')
+					->on('users.id', '=', 'users_follows.user_id')
+					->where('users_follows.follow_id', \DB::expr(Sentry::user()->get('id')));
+		});
 
-		if (!$follows = Model_Follow::find()->where('user_id', $id)->related('follows')->get())
+		if ( ! $followers)
 		{
-			throw new \HttpNotFoundException(); //consider change to page.
+			throw new \HttpNotFoundException();
 		}
 
-		$user = Model_User::find()->select('id', 'username')->where('id', $id)->get_one();
-
-		$this->template->title = $user->username . ' - Follows';
-		$this->template->content = \View::forge('users/follows')->set('follows', $follows)->set('title', $user->username . ' - Follows');
+		$this->template->title = 'Users - Followers';
+		$this->template->content = \View::forge('users/followers')->set('followers', $followers);
 	}
+	
+	/**
+	 * The following action.
+	 * 
+	 * @access  public
+	 * @return  void
+	 */
+	public function action_following()
+	{
+		$following = Model_Follow::find(function($query) {
+			return $query->join('users', 'INNER')
+					->on('users.id', '=', 'users_follows.follow_id')
+					->where('users_follows.user_id', \DB::expr(Sentry::user()->get('id')));
+		});
 
+		if ( ! $following)
+		{
+			throw new \HttpNotFoundException(); // consider message insted
+		}
+
+		$this->template->title = 'Users - Following';
+		$this->template->content = \View::forge('users/following')->set('following', $following);
+	}
 }
-
-/* End of file users.php */

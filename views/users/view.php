@@ -4,6 +4,12 @@
 
                     <?php echo Mini::avatar($user->id); ?>
 
+					<?php if ($user->id != Sentry::user()->get('id')): ?>
+					<ul>
+						<li><?php echo Mini::follow_link($user->username, $user->id, ($user->follow_id ? 'unfollow' : 'follow')); ?></li>
+					</ul>
+					<?php endif; ?>
+					
                     <ul>
                         <li><span>Posts</span>0</li>
                         <li><span>Comments</span>0</li>
@@ -13,12 +19,12 @@
                     <ul>
                         <li><span>Joined</span><?php echo Date::time_ago($user->created_at); ?></li>
                         <li><span>Gender</span><?php echo $user->gender; ?></li>
-                        <li><span>Brithday</span><?php echo Date::forge($user->birthday)->format("%m/%d/%Y"); ?></li>
+                        <li><span>Brithday</span><?php echo Date::forge($user->birthdate)->format("%m/%d/%Y"); ?></li>
                         <li><span>Location</span><?php echo $user->location; ?></li>
                     </ul>
                     <ul>
                         <li><span>Last IP</span>120.0.0.1</li>
-                        <li><span>Registred IP</span>120.0.0.1</li>
+                        <li><span>Registered IP</span>120.0.0.1</li>
                     </ul>
                 </div>
                 

@@ -1,8 +1,7 @@
-
 <ul>
 <?php foreach($followers as $user): ?>
-    
-    <li><?php echo $user->followers->username; ?> </li>
-    
+
+    <li><?php echo Html::anchor('users/'. Inflector::friendly_title($user->username.'-'.$user->id, '-', true), $user->username); ?></li>
+
 <?php endforeach; ?>
 </ul>
