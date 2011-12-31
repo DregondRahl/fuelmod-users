@@ -5,34 +5,34 @@ namespace Users;
 class Model_Profile extends \Model_Crud
 {
 
-	protected static $_table_name	= 'users_profiles';
+	protected static $_table_name  = 'users_profiles';
 
-	protected static $_primary_key	= 'user_id';
+	protected static $_primary_key = 'user_id';
 
 	public static function set_form_profile($form, $instance = null)
 	{
-		$days	= array_combine($days	= range(1, 31), $days);
+		$days   = array_combine($days   = range(1, 31), $days);
 		$months = array_combine($months = range(1, 12), $months);
-		$years	= array_combine($years	= range(date('Y'), date('Y') - 80), $years);
+		$years  = array_combine($years  = range(date('Y'), date('Y') - 80), $years);
 
 		$form->add('gender', 'Gender', array(
-			'type'		=> 'select',
-			'options'	=> array('private' => 'Private', 'male' => 'Male', 'female' => 'Female')
+			'type'    => 'select',
+			'options' => array('private' => 'Private', 'male' => 'Male', 'female' => 'Female')
 		));
 
 		$form->add('dob_day', 'Day', array(
-			'type'		=> 'select',
-			'options'	=> $days,
+			'type'    => 'select',
+			'options' => $days,
 		));
 
 		$form->add('dob_month', 'Month', array(
-			'type'		=> 'select',
-			'options'	=> $months,
+			'type'    => 'select',
+			'options' => $months,
 		));
 
 		$form->add('dob_year', 'Year', array(
-			'type'		=> 'select',
-			'options'	=> $years,
+			'type'    => 'select',
+			'options' => $years,
 		));
 
 		$form->add('location', 'Location', array('type' => 'text'), array(
@@ -81,30 +81,31 @@ class Model_Profile extends \Model_Crud
 	public static function set_form_options($form, $instance = null)
 	{
 		$form->add('show_birthdate', 'Show Birthdate', array(
-			'type'	=> 'checkbox',
+			'type'  => 'checkbox',
 			'value' => 1,
 		));
 
 		$form->add('show_alerts', 'Show Alerts', array(
-			'type'	=> 'checkbox',
+			'type'  => 'checkbox',
 			'value' => 1,
 		));
 
 		$form->add('show_signatures', 'Show Signature', array(
-			'type'	=> 'checkbox',
+			'type'  => 'checkbox',
 			'value' => 1,
 		));
 
 		$form->add('show_notifications', 'Show Notifications', array(
-			'type'	=> 'checkbox',
+			'type'  => 'checkbox',
 			'value' => 1,
 		));
 
 		$form->add('allow_wallposts', 'Allow Wallposts', array(
-			'type'	=> 'checkbox',
+			'type'  => 'checkbox',
 			'value' => 1,
 		));
 
 		$form->add('submit', null, array('value' => 'Save', 'type' => 'submit', 'class' => 'btn primary'));
 	}
+
 }

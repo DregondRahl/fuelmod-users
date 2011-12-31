@@ -11,7 +11,7 @@ class Model_User extends \Model_Crud
 	{
 		if ( ! \Sentry::user()->is_admin())
 		{
-			$query->where(static::$_table_name .'.activated', 1);
+			$query->where(static::$_table_name . '.activated', 1);
 		}
 
 		return $query;
@@ -47,12 +47,12 @@ class Model_User extends \Model_Crud
 		$form->add('password', 'Password', array('type' => 'password'), array(
 			array('required'), array('min_length', 6), array('max_length', 50)
 		));
-		
-        $form->add('remember', 'Remember', array(
-            'type'      => 'checkbox',
-            'value'     => 1,
-        ));
-		
+
+		$form->add('remember', 'Remember', array(
+			'type'  => 'checkbox',
+			'value' => 1,
+		));
+
 		$form->add('submit', null, array('value' => 'Login', 'type' => 'submit', 'class' => 'btn primary'));
 	}
 
