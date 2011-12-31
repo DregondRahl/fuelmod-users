@@ -87,9 +87,9 @@ class Controller_Auth extends \Controller_App
 					\Package::load('email');
 
 					$activation_link = Sentry::user()->register(array(
-						'username'	=> $form->validated('username'),
-						'password'	=> $form->validated('password'),
-						'email'		=> $form->validated('email'),
+						'username' => $form->validated('username'),
+						'password' => $form->validated('password'),
+						'email'    => $form->validated('email'),
 					));
 
 					$view = \View::forge('email/activation')
@@ -122,9 +122,9 @@ class Controller_Auth extends \Controller_App
 				else
 				{
 					$user_id = Sentry::user()->create(array(
-						'username'	=> $form->validated('username'),
-						'password'	=> $form->validated('password'),
-						'email'		=> $form->validated('email'),
+						'username' => $form->validated('username'),
+						'password' => $form->validated('password'),
+						'email'    => $form->validated('email'),
 					));
 
 					try
